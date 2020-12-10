@@ -186,12 +186,19 @@ namedParameterDeclarationsFor typeName ns ps = namespaced ns (sepByLines (tag ::
       pretty n <++> equals <++> pretty "mkParameter" <++> hsep [stringLit n, prettyType ty]
     ]
 
-ctorPrimsFor : {auto lib : Lib} -> {auto c : Class} -> String -> List Parameter -> List (Doc ())
-ctorPrimsFor n ps =
+ctorPrimsFor : {auto lib : Lib} -> {auto c : Class} -> String -> List Parameter -> Maybe DartType -> Maybe String -> List (Doc ())
+ctorPrimsFor n ps ret foreignName =
   let
     funName = if length n == 0 then "new" else n
     namedParameterNS = capitalize funName
-    ret' = pretty c.name
+    input' = pretty c.name
+    ret' = case ret of 
+              Nothing => input'
+              (Just ret) => prettyType ret
+    foreignName' = case foreignName of
+                        Nothing => ""
+                        (Just foreignName) => foreignName
+    prim__new =  pretty "  export %extern prim__dart_new : Type -> HVect positional -> Parameters named -> (1 x : %World) -> IORes " <++> ret'
     (positionalPs, namedPs) = partitionParameters ps
     positionalPs' = (\(n, ty) => parens (pretty n <++> colon <++> prettyType ty)) <$> positionalPs
     psNames = pretty . fst <$> positionalPs
@@ -202,14 +209,23 @@ ctorPrimsFor n ps =
         list psNames <++> parens (pretty "the (Parameters {tag = Void} [])" <++> list [])
       ) else (
         hsep psNames <++> pretty "ps",
-        positionalPs' ++ [ret' <+> dot <+> pretty namedParameterNS <+> dot <+> parameters'],
+        positionalPs' ++ [input' <+> dot <+> pretty namedParameterNS <+> dot <+> parameters'],
         list psNames <++> pretty "ps"
       )
+    funBody = pretty funName <++> ps' <++> equals <++> pretty "primIO $ prim__dart_new" <++> ret' <++> args'
+    funBodyForeign = 
+        let prim_type = pretty $ "(Struct \"" ++ foreignName' ++ "\" [])"
+        in pretty funName <++> ps' <++> equals <++> pretty ("primIO $ " ++ namedParameterNS ++ ".prim__dart_new") <++> prim_type <++> args'
     fun = vcat [
+      case foreignName of
+        Nothing => pretty ""
+        otherwise => prim__new <+> hardline,
       inline,
       pubExport,
       pretty funName <++> colon <++> pretty "HasIO io =>" <++> funType (pTys' ++ [pretty "io" <++> ret']),
-      pretty funName <++> ps' <++> equals <++> pretty "primIO $ prim__dart_new" <++> ret' <++> args'
+      case foreignName of
+        Nothing => funBody
+        otherwise => funBodyForeign
     ]
   in
     if isNil namedPs
@@ -221,7 +237,8 @@ isIdrisKeyword s = case s of
   "of" => True
   _ => False
 
-functionPrimsFor : {auto c : Class} -> Function -> String -> Bool -> List (Doc ())
+
+functionPrimsFor : {auto lib : Lib} -> {auto c : Class} -> Function -> String -> Bool -> List (Doc ())
 functionPrimsFor (Fun n ps ret) foreignName hasThis =
   let
     ret' = prettyType ret
@@ -233,6 +250,7 @@ functionPrimsFor (Fun n ps ret) foreignName hasThis =
     proxyParamTys = [pretty "io" <++> ret']
     thisTy = the (Lazy (Doc())) (parens (this <++> colon <++> pretty c.name))
     proxyName = pretty (if isIdrisKeyword n then n ++ "_" else n)
+    (positionalPs, namedPs) = partitionParameters ps
     prim =
       foreign foreignName <+> hardline
         <+> primName <++> colon <++> funType (ifHasThis (thisTy :: primParamTys) primParamTys)
@@ -242,7 +260,10 @@ functionPrimsFor (Fun n ps ret) foreignName hasThis =
         <+> proxyName <++> hsep psNames <++> ifHasThis (this <++> equals) equals
         <++> pretty "primIO $" <++> primName <++> hsep (ifHasThis (this :: psNames) psNames)
   in
-    [prim, proxy]
+    if isNil namedPs
+      then [prim, proxy]
+      else ctorPrimsFor n ps (Just ret) (Just foreignName)
+
   where
     ifHasThis : Lazy a -> Lazy a -> a
     ifHasThis ifTrue ifFalse = if hasThis then ifTrue else ifFalse
@@ -261,7 +282,7 @@ isAssignableFromInstance super sub =
 
 classMemberPrim : {auto lib : Lib} -> Class -> Member -> List (Doc ())
 classMemberPrim c m = case m of
-  Constructor n ps => ctorPrimsFor n ps
+  Constructor n ps => ctorPrimsFor n ps Nothing Nothing
   Method f@(Fun n _ _) => functionPrimsFor f ("." ++ n) True
   Static f@(Fun n _ _) => functionPrimsFor f (foreignNameOf (c.name ++ "." ++ n)) False
   FieldMember (Var n ty) => [getter c.name n ty, setter c.name n ty]
