@@ -26,6 +26,11 @@ flutter = defModule "Flutter.FFI" [
   ],
   defLib painting [
     defClass "TextStyle" [
+      defConstructor "" [
+          named "Color" "backgroundColor",
+          named "Color" "color",
+          named double "fontSize"
+      ],
       final "TextAlign" "textAlign"
     ],
     defClass "AlignmentGeometry" [
@@ -34,7 +39,15 @@ flutter = defModule "Flutter.FFI" [
       extends "AlignmentGeometry",
       defConst "Alignment" "centerLeft",
       defConst "Alignment" "centerRight"
+    ],
+
+ 
+    defClass "NetworkImage" [
+      defConstructor "" [
+        positional string "src"
+      ]
     ]
+
   ],
   defLib material [
     defClass "MaterialColor" [
@@ -51,12 +64,6 @@ flutter = defModule "Flutter.FFI" [
       defConst "MaterialColor" "transparent",
       defConst "MaterialColor" "white",
       defConst "MaterialColor" "yellow"
-    ],
-    defClass "CircularProgressIndicator" [
-      extends "Widget",
-      defConstructor "" [
-        named "Key" "key"
-      ]
     ],
     defClass "VisualDensity" [
       defConst "VisualDensity" "adaptivePlatformDensity"
@@ -77,12 +84,20 @@ flutter = defModule "Flutter.FFI" [
       ],
       final "TextTheme" "textTheme"
     ],
+    defClass "ButtonStyle" [
+      defConstructor "" [
+          named "Color" "backgroundColor"
+      ],
+      final "TextAlign" "textAlign"
+    ],
     defClass "Scaffold" [
       extends "Widget",
       defConstructor "" [
         named "Widget" "appBar",
         named "Widget" "body",
-        named "Widget" "floatingActionButton"
+        named "Widget" "floatingActionButton",
+        named "Color" "backgroundColor",
+        named bool "resizeToAvoidBottomPadding"
       ]
     ],
     defClass "AppBar" [
@@ -122,6 +137,39 @@ flutter = defModule "Flutter.FFI" [
         named "Widget" "child"
       ]
     ],
+
+    defClass "TextButton" [
+      extends "Widget",
+      defConstructor "" [
+        named (function [] void) "onPressed",
+        named "ButtonStyle" "style",
+        named "Widget" "child"
+        ],
+      defStatic "styleFrom" [ 
+        named "Color" "primary",
+        named "Color" "backgroundColor"
+      ] "ButtonStyle"
+    ],
+
+    defClass "InputDecoration" [
+      defConstructor "" [
+        named string "labelText",
+        named "TextStyle" "labelStyle",
+        named "Color" "fillColor",
+        named bool "filled"
+      ]
+    ],
+
+    defClass "TextField" [
+      extends "Widget",
+      defConstructor "" [
+        named "InputDecoration" "decoration",
+        named "TextStyle" "style",        
+        named bool "obscureText",        
+        named (function [string] void) "onChanged"
+      ]
+    ],
+
     defClass "Slider" [
       extends "Widget",
       defConstructor "" [
@@ -135,6 +183,14 @@ flutter = defModule "Flutter.FFI" [
         named string "label"
       ]
     ],
+
+    defClass "MaterialPageRoute" [
+      extends "Widget",
+      defConstructor "" [
+        named (function ["WidgetBuilder"] "Widget") "builder" 
+      ]
+    ],
+
     defClass "MaterialApp" [
       extends "Widget",
       defConstructor "" [
@@ -161,6 +217,30 @@ flutter = defModule "Flutter.FFI" [
     ],
     defClass "BuildContext" [
     ],
+    defClass "WidgetBuilder" [
+      defConstructor "" [
+        positional "BuildContext" "context"
+      ]
+    ],
+
+
+    defClass "Container" [
+      extends "Widget",
+      defConstructor "" [
+        named "Widget" "child"
+      ]
+    ],
+
+
+    defClass "SizedBox" [
+      extends "Widget",
+      defConstructor "" [
+        named double "width",
+        named double "height"
+      ]
+    ],
+
+
     defClass "Center" [
       extends "Widget",
       defConstructor "" [
@@ -187,6 +267,23 @@ flutter = defModule "Flutter.FFI" [
         named "MainAxisAlignment" "mainAxisAlignment"
       ]
     ],
+
+    defClass "Route" [
+      extends "Widget",
+      defConstructor "" [
+      ]
+    ],
+
+
+    defClass "Navigator" [
+      extends "Widget",
+      defStatic "push" [
+        positional "BuildContext" "context",
+        positional "MaterialPageRoute" "materialPageRoute"
+      ] void
+    ],
+
+ 
     defClass "Text" [
       extends "Widget",
       defConstructor "" [
@@ -196,6 +293,15 @@ flutter = defModule "Flutter.FFI" [
         named "TextAlign" "textAlign"
       ]
     ],
+
+    defClass "Image" [
+      extends "Widget",
+      defConstructor "" [
+        named "NetworkImage" "image"
+      ]
+    ],
+
+
     defClass "GestureDetector" [
       extends "Widget",
       defConstructor "" [
@@ -240,6 +346,9 @@ flutter = defModule "Flutter.FFI" [
       "resumed"
     ],
     defClass "Color" [
+      defConstructor "" [
+        positional int "value"
+      ]
     ],
     defClass "Canvas" [
       defIO "drawPath" [
